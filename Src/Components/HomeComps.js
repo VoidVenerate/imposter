@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 
 const HomeComps = () => {
     const [displayedText, setDisplayedText] = useState('')
@@ -21,6 +22,12 @@ const HomeComps = () => {
 
         return () => {clearInterval(typingInterval)}
     },[])
+
+    const navigation = useNavigation()
+
+    const handlePlayGame = () => {
+      navigation.navigate('PlayOptions')
+    }
 
     useEffect(() => {
         Animated.loop(
@@ -79,7 +86,7 @@ const HomeComps = () => {
               pressed && styles.primaryButtonPressed
             ]}
           >
-            <Text style={styles.primaryButtonText}>🎮 PLAY GAME 🎮</Text>
+            <Text style={styles.primaryButtonText} onPress={handlePlayGame}>🎮 PLAY GAME 🎮</Text>
           </Pressable>
         </Animated.View>
 

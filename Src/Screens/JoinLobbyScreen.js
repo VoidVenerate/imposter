@@ -1,11 +1,12 @@
-import { StyleSheet, Text, View, TextInput, Pressable, Animated } from 'react-native'
-import React, {useState, useEffect} from 'react'
-import { createGame } from '../api'
+import { StyleSheet, Text, View, Pressable, Animated, TextInput } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { joinGame } from '../api'
 
-const CreateLobbyScreen = ({navigation}) => {
-    const [name, setName] = useState("")
+const JoinLobbyScreen = ({navigation}) => {
+    const [gameId, setGameId] = useState('')
+    const [name, setName] = useState('')
     const [scaleAnim] = useState(new Animated.Value(1))
-
+    
     useEffect(() => {
         Animated.loop(
             Animated.sequence([
@@ -23,88 +24,102 @@ const CreateLobbyScreen = ({navigation}) => {
         ).start()
     }, [])
 
-    const handleCreate = async () => {
+    const handleJoin = async () => {
         try {
-            if (!name.trim()) return
-            const data = await createGame(name)
+            if (!gameId.trim() || !name.trim()) return
+
+            const normalizedGameId = gameId.trim().toLowerCase()
+            const data = await joinGame(normalizedGameId, name)
+            console.log("JOIN RESPONSE:", data)
+
 
             navigation.navigate(`LobbyScreen`, {
                 gameId: data.game_id,
-                isHost: true,
+                isHost: false,
                 playerName: name,
             })
-        }catch (error) {
-            console.error("Error creating game:", error)
+        } catch (error) {
+            console.error("Error Joining game", error)
         }
-    } 
+    }
 
   return (
     <View style={styles.container}>
-      {/* Background glow effect */}
-      <View style={styles.backgroundGlow} />
+        {/* Background glow effect */}
+        <View style={styles.backgroundGlow} />
 
-      {/* Header with emoji */}
-      <View style={styles.header}>
-        <Text style={styles.emoji}>👑</Text>
-        <Text style={styles.title}>Create Lobby</Text>
-        <Text style={styles.emoji}>👑</Text>
-      </View>
+        {/* Header with emoji */}
+        <View style={styles.header}>
+          <Text style={styles.emoji}>🔑</Text>
+          <Text style={styles.title}>Join Lobby</Text>
+          <Text style={styles.emoji}>🔑</Text>
+        </View>
 
-      <Text style={styles.subtitle}>Start a new game and invite your friends</Text>
+        <Text style={styles.subtitle}>Join a game and play with your friends</Text>
 
-      {/* Decorative divider */}
-      <View style={styles.divider} />
+        {/* Decorative divider */}
+        <View style={styles.divider} />
 
-      {/* Input container */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>🎭 Your Name</Text>
-        <TextInput
-          placeholder='Enter your name...'
-          placeholderTextColor='#6b7280'
-          value={name}
-          onChangeText={setName}
-          style={styles.input}
-          maxLength={20}
-        />
-        {name.length > 0 && (
-          <Text style={styles.charCount}>{name.length}/20</Text>
-        )}
-      </View>
+        {/* Input container */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>🎲 Game Code</Text>
+          <TextInput
+            placeholder='Enter Game ID...'
+            placeholderTextColor='#6b7280'
+            value={gameId}
+            onChangeText={setGameId}
+            style={[styles.input, { marginBottom: 20 }]}
+            autoCapitalize='characters'
+          />
+          
+          <Text style={styles.label}>🎭 Your Name</Text>
+          <TextInput
+            placeholder='Enter your name...'
+            placeholderTextColor='#6b7280'
+            value={name}
+            onChangeText={setName}
+            style={styles.input}
+            maxLength={20}
+          />
+          {name.length > 0 && (
+            <Text style={styles.charCount}>{name.length}/20</Text>
+          )}
+        </View>
 
-      {/* Create button */}
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        {/* Join button */}
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <Pressable 
+            onPress={handleJoin} 
+            style={({ pressed }) => [
+              styles.button,
+              (!name.trim() || !gameId.trim()) && styles.buttonDisabled,
+              pressed && styles.buttonPressed
+            ]}
+            disabled={!name.trim() || !gameId.trim()}
+          >
+            <Text style={styles.buttonText}>
+              {(name.trim() && gameId.trim()) ? '🚀 JOIN GAME 🚀' : '⚠️ FILL ALL FIELDS'}
+            </Text>
+          </Pressable>
+        </Animated.View>
+
+        {/* Back button */}
         <Pressable 
-          onPress={handleCreate} 
-          style={({ pressed }) => [
-            styles.button,
-            !name.trim() && styles.buttonDisabled,
-            pressed && styles.buttonPressed
-          ]}
-          disabled={!name.trim()}
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
         >
-          <Text style={styles.buttonText}>
-            {name.trim() ? '🚀 CREATE GAME 🚀' : '⚠️ ENTER NAME FIRST'}
-          </Text>
+          <Text style={styles.backButtonText}>← Back to Menu</Text>
         </Pressable>
-      </Animated.View>
 
-      {/* Back button */}
-      <Pressable 
-        onPress={() => navigation.goBack()} 
-        style={styles.backButton}
-      >
-        <Text style={styles.backButtonText}>← Back to Menu</Text>
-      </Pressable>
-
-      {/* Info text */}
-      <Text style={styles.infoText}>
-        💡 You'll be the host and can start the game when ready
-      </Text>
+        {/* Info text */}
+        <Text style={styles.infoText}>
+          💡 Get the game code from your host to join
+        </Text>
     </View>
   )
 }
 
-export default CreateLobbyScreen
+export default JoinLobbyScreen
 
 const styles = StyleSheet.create({
   container: { 

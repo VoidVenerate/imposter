@@ -1,9 +1,26 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import HomeScreen from './Screens/HomeScreen';
+import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { NavigationContainer } from '@react-navigation/native';
+import CreateLobbyScreen from './Screens/CreateLobbyScreen';
+import PlayOptionsScreen from './Screens/PlayOptionsScreen';
+import JoinLobbyScreen from './Screens/JoinLobbyScreen';
+import LobbyScreen from './Screens/LobbyScreen';
 
+  const Stack = createNativeStackNavigator()
 export default function App() {
+
   return (
-    <HomeScreen />
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name = 'Home' component={HomeScreen} />
+        <Stack.Screen name = 'PlayOptions' component={PlayOptionsScreen} />
+        <Stack.Screen name = 'CreateGame' component={CreateLobbyScreen} />
+        <Stack.Screen name = 'JoinGame' component={JoinLobbyScreen} />
+        <Stack.Screen name = 'LobbyScreen' component={LobbyScreen} />
+
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
