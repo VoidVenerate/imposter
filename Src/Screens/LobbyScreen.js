@@ -12,7 +12,7 @@ const LobbyScreen = ({ route, navigation }) => {
   // Socket hook
   const { send, status } = useWebsocket(gameId, playerName, (msg) => {
     console.log('SERVER MESSAGE', msg);
-    if (msg.event === 'current_state') {
+    if (msg.event === 'player_joined' || msg.event === 'current_state') {
       setPlayers(msg.players)
 
       if (msg.stage === 'question_answering') {
@@ -49,6 +49,7 @@ const LobbyScreen = ({ route, navigation }) => {
     if (players.length < 2) return
     send({ type: 'START_GAME' })
   }
+
 
   const getStatusColor = () => {
     switch(status) {
