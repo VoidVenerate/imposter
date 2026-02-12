@@ -127,7 +127,7 @@ const LobbyScreen = ({ route, navigation }) => {
               ]}
             >
               <Text style={styles.startButtonText}>
-                {players.length >= 2 && status === 'open' 
+                {players.length > 2 && status === 'open' 
                   ? '🚀 START GAME 🚀' 
                   : '⏳ WAITING FOR PLAYERS'
                 }
