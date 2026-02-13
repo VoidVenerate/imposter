@@ -1,6 +1,7 @@
 import { View, Text, Pressable, FlatList, StyleSheet, Animated } from 'react-native'
 import { useState, useEffect } from 'react'
 import { useWebsocket } from '../websocket'
+import { startGame } from '../api'
 
 const LobbyScreen = ({ route, navigation }) => {
   const { gameId, playerName, isHost } = route.params
@@ -14,10 +15,12 @@ const LobbyScreen = ({ route, navigation }) => {
     console.log('SERVER MESSAGE', msg);
     if (msg.event === 'player_joined' || msg.event === 'current_state') {
       setPlayers(msg.players)
-
-      if (msg.stage === 'question_answering') {
-        navigation.replace('AnsweringScreen')
-      }
+    }
+      // Navigate to question screen
+    if (
+      msg.event === 'your_question'
+    ) {
+      navigation.replace('QuestionScreen', { gameId, playerName, question: msg.question, isImposter: msg.is_imposter, send })
     }
     if (msg.event === 'reveal_answers') {
       navigation.replace('RevealScreen')
@@ -44,11 +47,15 @@ const LobbyScreen = ({ route, navigation }) => {
       ])
     ).start()
   }, [])
-
-  const startGame = () => {
-    if (players.length < 2) return
-    send({ type: 'START_GAME' })
-  }
+  const handleStartGame = async () => {
+        try {
+            if (players.length < 3) return
+            const data = await startGame(gameId)
+            console.log("START GAME RESPONSE:", data)
+        } catch (error) {
+            console.log("START GAME ERROR:", error.response?.data || error.message)
+        }
+    }
 
 
   const getStatusColor = () => {
@@ -119,7 +126,7 @@ const LobbyScreen = ({ route, navigation }) => {
         {isHost && (
           <Animated.View style={{ transform: [{ scale: players.length >= 2 ? pulseAnim : 1 }] }}>
             <Pressable 
-              onPress={startGame}
+              onPress={handleStartGame}
               disabled={players.length < 2 || status !== 'open'}
               style={({ pressed }) => [
                 styles.startButton,

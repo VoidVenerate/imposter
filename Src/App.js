@@ -7,6 +7,7 @@ import CreateLobbyScreen from './Screens/CreateLobbyScreen';
 import PlayOptionsScreen from './Screens/PlayOptionsScreen';
 import JoinLobbyScreen from './Screens/JoinLobbyScreen';
 import LobbyScreen from './Screens/LobbyScreen';
+import QuestionScreen from './Screens/QuestionScreen';
 
   const Stack = createNativeStackNavigator()
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
         <Stack.Screen name = 'CreateGame' component={CreateLobbyScreen} />
         <Stack.Screen name = 'JoinGame' component={JoinLobbyScreen} />
         <Stack.Screen name = 'LobbyScreen' component={LobbyScreen} />
+        <Stack.Screen name = 'QuestionScreen' component={QuestionScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>

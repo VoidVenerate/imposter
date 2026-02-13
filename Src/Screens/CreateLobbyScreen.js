@@ -1,9 +1,10 @@
-import { StyleSheet, Text, View, TextInput, Pressable, Animated } from 'react-native'
+import { StyleSheet, Text, View, TextInput, Pressable, Animated, ActivityIndicator } from 'react-native'
 import React, {useState, useEffect} from 'react'
 import { createGame } from '../api'
 
 const CreateLobbyScreen = ({navigation}) => {
     const [name, setName] = useState("")
+    const [loading, setLoading] = useState(false)
     const [scaleAnim] = useState(new Animated.Value(1))
 
     useEffect(() => {
@@ -24,8 +25,9 @@ const CreateLobbyScreen = ({navigation}) => {
     }, [])
 
     const handleCreate = async () => {
+        if (!name.trim()) return
+        setLoading(true)
         try {
-            if (!name.trim()) return
             const data = await createGame(name)
 
             navigation.navigate(`LobbyScreen`, {
@@ -33,8 +35,9 @@ const CreateLobbyScreen = ({navigation}) => {
                 isHost: true,
                 playerName: name,
             })
-        }catch (error) {
+        } catch (error) {
             console.error("Error creating game:", error)
+            setLoading(false)
         }
     } 
 
@@ -65,6 +68,7 @@ const CreateLobbyScreen = ({navigation}) => {
           onChangeText={setName}
           style={styles.input}
           maxLength={20}
+          editable={!loading}
         />
         {name.length > 0 && (
           <Text style={styles.charCount}>{name.length}/20</Text>
@@ -77,14 +81,23 @@ const CreateLobbyScreen = ({navigation}) => {
           onPress={handleCreate} 
           style={({ pressed }) => [
             styles.button,
-            !name.trim() && styles.buttonDisabled,
+            (!name.trim() || loading) && styles.buttonDisabled,
             pressed && styles.buttonPressed
           ]}
-          disabled={!name.trim()}
+          disabled={!name.trim() || loading}
         >
-          <Text style={styles.buttonText}>
-            {name.trim() ? '🚀 CREATE GAME 🚀' : '⚠️ ENTER NAME FIRST'}
-          </Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={[styles.buttonText, styles.loadingText]}>
+                ⏳ CREATING...
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.buttonText}>
+              {name.trim() ? '🚀 CREATE GAME 🚀' : '⚠️ ENTER NAME FIRST'}
+            </Text>
+          )}
         </Pressable>
       </Animated.View>
 
@@ -92,8 +105,11 @@ const CreateLobbyScreen = ({navigation}) => {
       <Pressable 
         onPress={() => navigation.goBack()} 
         style={styles.backButton}
+        disabled={loading}
       >
-        <Text style={styles.backButtonText}>← Back to Menu</Text>
+        <Text style={[styles.backButtonText, loading && styles.disabledText]}>
+          ← Back to Menu
+        </Text>
       </Pressable>
 
       {/* Info text */}
@@ -225,6 +241,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
 
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+
+  loadingText: {
+    marginLeft: 0,
+  },
+
   backButton: {
     padding: 14,
     borderRadius: 12,
@@ -238,6 +265,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
     fontSize: 15,
+  },
+
+  disabledText: {
+    opacity: 0.5,
   },
 
   infoText: {
