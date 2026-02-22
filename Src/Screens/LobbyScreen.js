@@ -12,6 +12,7 @@ const LobbyScreen = ({ route, navigation }) => {
   
   // Socket hook
   const { send, status } = useWebsocket(gameId, playerName, (msg) => {
+    const currentPlayer = players.find(p => p.name === playerName)
     console.log('SERVER MESSAGE', msg);
     if (msg.event === 'player_joined' || msg.event === 'current_state') {
       setPlayers(msg.players)
@@ -20,7 +21,7 @@ const LobbyScreen = ({ route, navigation }) => {
     if (
       msg.event === 'your_question'
     ) {
-      navigation.replace('QuestionScreen', { gameId, playerName, question: msg.question, isImposter: msg.is_imposter, send })
+      navigation.replace('QuestionScreen', { gameId, playerName, question: msg.question, isImposter: msg.is_imposter, playerId: msg.currentPlayer?.id, send })
     }
     if (msg.event === 'reveal_answers') {
       navigation.replace('RevealScreen')

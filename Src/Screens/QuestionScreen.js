@@ -4,7 +4,7 @@ import { useWebsocket } from '../websocket'
 
 const QuestionScreen = ({route, navigation}) => {
 
-    const {gameId, playerName, question, isImposter} = route.params
+    const {gameId, playerName, question, isImposter, playerId} = route.params
 
     const [answer, setAnswer] = useState("")
     const [loading, setLoading] = useState(false)

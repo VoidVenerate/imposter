@@ -32,3 +32,15 @@ export const startGame = async (gameId) => {
 
     return res.data
 }
+
+
+export const VoteForPlayer = async (gameId, playerId, targetId) => {
+    const res = await api.post(`/games/${gameId}/vote/${playerId}/${targetId}`, {
+        game_id: gameId,
+        player_id: playerId,
+        target_id: targetId
+    })
+    console.log("Voted player data:", res.data);
+
+    return res.data
+}
