@@ -27,9 +27,12 @@ export const joinGame = async (gameId, playerName) => {
 export const submitAnswer = async (gameId, playerId, answer) => {
     console.log("Submitting answer with:", { gameId, playerId, answer });
     
-    const res = await api.post(`/games/${gameId}/submit-answer`, {
-        player_id: playerId,
-        answer: answer
+    // Use params for query parameters, not data for body
+    const res = await api.post(`/games/${gameId}/submit-answer`, null, {
+        params: {
+            player_id: playerId,
+            answer: answer
+        }
     })
 
     console.log("Submitted answer response:", res.data)

@@ -1,63 +1,49 @@
-import { StyleSheet, Text, View, Pressable, TextInput, Animated, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, View, Pressable, TextInput, Animated } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useWebsocket } from '../websocket'
 import { submitAnswer } from '../api'
 
 const QuestionScreen = ({ route, navigation }) => {
-  const { gameId, playerName, playerId } = route.params
+  const { gameId, playerName, playerId, question, isImposter } = route.params
+  console.log('Route params:', { gameId, playerName, playerId, question, isImposter })
 
-  // Get question and imposter status from WebSocket
-  const [question, setQuestion] = useState(null)
-  const [isImposter, setIsImposter] = useState(false)
-  const [loading, setLoading] = useState(true)
-  
   const [answer, setAnswer] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [pulseAnim] = useState(new Animated.Value(1))
 
-  // ------------------- WebSocket -------------------
   const { send } = useWebsocket(gameId, playerName, (msg) => {
     console.log('RAW SERVER MESSAGE:', JSON.stringify(msg, null, 2));
 
-    // Handle game start / question assignment
-    if (msg.event === 'game_started' || msg.stage === 'question_answering') {
-      console.log('Question data received:', {
-        question: msg.question,
-        is_imposter: msg.is_imposter,
-        data: msg.data
-      });
+    // Handle reveal answers - SINGLE HANDLER, CHECK BOTH EVENT AND STAGE
+    if (msg.event === 'reveal_answers' || msg.stage === 'question_reveal' || msg.stage === 'reveal_answers') {
+      console.log('🎉 Navigating to reveal answers!');
       
-      // Try multiple possible locations for the data
-      const receivedQuestion = msg.question || msg.data?.question || msg.your_question
-      const receivedImposter = msg.is_imposter || msg.data?.is_imposter || msg.isImposter || false
+      // msg.data contains the array of answers
+      const answersData = msg.data || [];
+      const questionText = msg.question || question;
       
-      if (receivedQuestion) {
-        setQuestion(receivedQuestion)
-        setIsImposter(receivedImposter)
-        setLoading(false)
-      }
-    }
-
-    // Navigate to reveal answers
-    if (msg.stage === 'question_reveal') {
       navigation.replace('RevealAnswersScreen', {
         gameId,
         playerName,
         playerId,
-        question,
-        isImposter,
-        playersAndAnswers: msg.data || msg.players_and_answers
-      })
+        question: questionText,
+        playersAndAnswers: answersData
+      });
+      return; // IMPORTANT: Stop here after navigation
     }
 
     // Navigate to end screen if imposter revealed
     if (msg.event === 'reveal_imposter') {
-      navigation.replace('GameEndScreen', { gameId, playerName, playerId })
+      navigation.replace('GameEndScreen', { 
+        gameId, 
+        playerName, 
+        playerId 
+      });
+      return;
     }
   })
 
-  // ------------------- Pulse Animation -------------------
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -75,12 +61,11 @@ const QuestionScreen = ({ route, navigation }) => {
     ).start()
   }, [])
 
-  // ------------------- Submit Answer -------------------
   const handleSubmit = async () => {
     if (!answer.trim()) return
     if (!playerId) return alert('Missing player ID!')
 
-    setSubmitting(true)
+    setLoading(true)
     try {
       console.log('Submitting answer', { playerId, answer: answer.trim() })
       await submitAnswer(gameId, playerId, answer.trim())
@@ -90,18 +75,8 @@ const QuestionScreen = ({ route, navigation }) => {
       console.error('Submit failed:', err)
       alert('Failed to submit answer.')
     } finally {
-      setSubmitting(false)
+      setLoading(false)
     }
-  }
-
-  // Show loading until we get the question
-  if (loading || !question) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#E63946" />
-        <Text style={styles.loadingText}>Getting your question...</Text>
-      </View>
-    )
   }
 
   return (
@@ -141,14 +116,14 @@ const QuestionScreen = ({ route, navigation }) => {
             <Pressable
               style={({ pressed }) => [
                 styles.button,
-                (!answer.trim() || submitting) && styles.buttonDisabled,
+                (!answer.trim() || loading) && styles.buttonDisabled,
                 pressed && styles.buttonPressed
               ]}
               onPress={handleSubmit}
-              disabled={!answer.trim() || submitting}
+              disabled={!answer.trim() || loading}
             >
               <Text style={styles.buttonText}>
-                {submitting ? '⏳ SUBMITTING...' : '🚀 SUBMIT ANSWER 🚀'}
+                {loading ? '⏳ SUBMITTING...' : '🚀 SUBMIT ANSWER 🚀'}
               </Text>
             </Pressable>
           </Animated.View>
@@ -157,7 +132,9 @@ const QuestionScreen = ({ route, navigation }) => {
         <View style={styles.submittedContainer}>
           <Text style={styles.submittedEmoji}>✅</Text>
           <Text style={styles.submittedTitle}>Answer Submitted!</Text>
-          <Text style={styles.submittedText}>Waiting for others...</Text>
+          <Text style={styles.submittedText}>
+            {submitted ? "Waiting for others..." : "All answers in! Moving to results..."}
+          </Text>
         </View>
       )}
     </View>
@@ -171,17 +148,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a0e17',
     padding: 24,
-  },
-  
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  loadingText: {
-    color: '#9AA0A6',
-    fontSize: 16,
-    marginTop: 16,
   },
 
   backgroundGlow: {

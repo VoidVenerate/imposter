@@ -10,7 +10,7 @@ const LobbyScreen = ({ route, navigation }) => {
   // UI state
   const [players, setPlayers] = useState([])
   
-  // Socket hook
+  // Socket hook - use playerName for WebSocket URL
   const { send, status } = useWebsocket(gameId, playerName, (msg) => {
     console.log('RAW SERVER MESSAGE:', JSON.stringify(msg, null, 2));
     
@@ -19,15 +19,27 @@ const LobbyScreen = ({ route, navigation }) => {
     }
     
     if (msg.stage === 'question_answering') {
-      // Just navigate - QuestionScreen will get question from WebSocket
-      navigation.replace('QuestionScreen', { 
-        gameId, 
-        playerName, 
-        playerId
-      })
+      console.log("QUESTION MESSAGE:", msg);
+
+      if (!msg.question && !msg.data?.question) {
+        console.log("Question missing in payload!");
+        return;
+      }
+
+      const question = msg.data?.question ?? msg.question;
+      const isImposter = msg.data?.is_imposter ?? msg.is_imposter ?? false;
+
+      // Pass BOTH playerName (for WS) and playerId (for API)
+      navigation.replace('QuestionScreen', {
+        gameId,
+        playerName,
+        playerId,  // <-- Keep this for API calls!
+        question,
+        isImposter,
+      });
     }
     
-    if (msg.stage === 'question_reveal') {
+    if (msg.event === 'reveal_answers') {
       navigation.replace('RevealAnswersScreen')
     }
 

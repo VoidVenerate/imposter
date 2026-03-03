@@ -23,34 +23,26 @@ export const useWebsocket = (gameId, playerName, onmessage) => {
     }
 
     ws.onmessage = (e) => {
-      console.log('RAW STRING:', e.data); // Log raw before any parsing
-      
-      let parsedData
+      let parsedData;
       try {
-        parsedData = JSON.parse(e.data)
-        
-        // Log all possible locations of question
-        console.log('Possible question locations:', {
-          'parsedData.question': parsedData.question,
-          'parsedData.data?.question': parsedData.data?.question,
-          'parsedData.data?.data?.question': parsedData.data?.data?.question,
-          'full parsedData': parsedData
-        });
-        
-        // Your existing unwrap logic...
+        parsedData = JSON.parse(e.data);
+        console.log('First parse:', parsedData);
+
+        // ONLY unwrap if data is a STRING (double-encoded JSON)
+        // NEVER unwrap if data is already an object or array!
         if (parsedData.data && typeof parsedData.data === 'string') {
-          parsedData = JSON.parse(parsedData.data)
-        } else if (parsedData.data && typeof parsedData.data === 'object') {
-          parsedData = parsedData.data
+          parsedData = JSON.parse(parsedData.data);
         }
-        
+        // REMOVED: Don't unwrap if it's already an object!
+
       } catch (err) {
-        console.error("WS Parse Error:", err)
-        return
+        console.error("WS Parse Error:", err);
+        return;
       }
 
-      messageHandlerRef.current?.(parsedData)
-    }
+      console.log("WS RECEIVED (final):", parsedData);
+      messageHandlerRef.current?.(parsedData);
+    };
 
     ws.onerror = (err) => {
       console.error('WebSocket error', err)
