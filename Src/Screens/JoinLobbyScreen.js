@@ -1,120 +1,127 @@
-import { StyleSheet, Text, View, Pressable, Animated, TextInput } from 'react-native'
+import { StyleSheet, Text, View, Pressable, Animated, TextInput, ActivityIndicator } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { joinGame } from '../api'
 
-const JoinLobbyScreen = ({navigation}) => {
-    const [gameId, setGameId] = useState('')
-    const [name, setName] = useState('')
-    const [scaleAnim] = useState(new Animated.Value(1))
-    
-    useEffect(() => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(scaleAnim, {
-                    toValue: 1.02,
-                    duration: 1500,
-                    useNativeDriver: true
-                }),
-                Animated.timing(scaleAnim, {
-                    toValue: 1,
-                    duration: 1500,
-                    useNativeDriver: true
-                })
-            ])
-        ).start()
-    }, [])
+const JoinLobbyScreen = ({ navigation }) => {
+  const [gameId, setGameId] = useState('')
+  const [name, setName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [scaleAnim] = useState(new Animated.Value(1))
+  const [errorMessage, setErrorMessage] = useState('')
 
-    const handleJoin = async () => {
-        try {
-            if (!gameId.trim() || !name.trim()) return
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim, { toValue: 1.02, duration: 1500, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 1500, useNativeDriver: true })
+      ])
+    ).start()
+  }, [])
 
-            const normalizedGameId = gameId.trim().toLowerCase()
-            const data = await joinGame(normalizedGameId, name)
-            console.log("JOIN RESPONSE:", data)
+  const handleJoin = async () => {
+    if (!gameId.trim() || !name.trim()) return
+    setLoading(true)
+    setErrorMessage('')
 
+    try {
+      const data = await joinGame(gameId.trim(), name.trim())
 
-            navigation.navigate(`LobbyScreen`, {
-                gameId: data.game_id,
-                isHost: false,
-                playerName: name,
-            })
-        } catch (error) {
-            console.error("Error Joining game", error)
+      // Check if player exists
+      const player = data.players.find(p => p.name === name.trim())
+      if (!player) throw new Error('Player not found in game response')
+
+      navigation.navigate("LobbyScreen", {
+        gameId: data.game_id,
+        isHost: false,
+        playerName: name.trim(),
+        playerId: player.id,
+      })
+    } catch (error) {
+      console.error("Error joining game:", error)
+
+      // Show user-friendly error
+      if (error.response) {
+        if (error.response.status === 404) {
+          setErrorMessage(`❌ ${error.response.data.detail}`) // Shows: Player name already taken
+        } else if (error.response.status >= 500) {
+          setErrorMessage('❌ Server error. Try again later.')
+        } else {
+          setErrorMessage(`❌ Error: ${error.response.status}`)
         }
+      } else {
+        setErrorMessage('❌ Network error. Check your connection.')
+      }
+    } finally {
+      setLoading(false)
     }
+  }
 
   return (
     <View style={styles.container}>
-        {/* Background glow effect */}
-        <View style={styles.backgroundGlow} />
+      <View style={styles.backgroundGlow} />
+      <View style={styles.header}>
+        <Text style={styles.emoji}>🔑</Text>
+        <Text style={styles.title}>Join Lobby</Text>
+        <Text style={styles.emoji}>🔑</Text>
+      </View>
 
-        {/* Header with emoji */}
-        <View style={styles.header}>
-          <Text style={styles.emoji}>🔑</Text>
-          <Text style={styles.title}>Join Lobby</Text>
-          <Text style={styles.emoji}>🔑</Text>
-        </View>
+      <Text style={styles.subtitle}>Join a game and play with your friends</Text>
+      <View style={styles.divider} />
 
-        <Text style={styles.subtitle}>Join a game and play with your friends</Text>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>🎲 Game Code</Text>
+        <TextInput
+          placeholder='Enter Game ID...'
+          placeholderTextColor='#6b7280'
+          value={gameId}
+          onChangeText={setGameId}
+          style={[styles.input, { marginBottom: 20 }]}
+          autoCapitalize='characters'
+          editable={!loading}
+        />
 
-        {/* Decorative divider */}
-        <View style={styles.divider} />
+        <Text style={styles.label}>🎭 Your Name</Text>
+        <TextInput
+          placeholder='Enter your name...'
+          placeholderTextColor='#6b7280'
+          value={name}
+          onChangeText={setName}
+          style={styles.input}
+          maxLength={20}
+          editable={!loading}
+        />
+        {name.length > 0 && <Text style={styles.charCount}>{name.length}/20</Text>}
+        {errorMessage.length > 0 && <Text style={{ color: 'red', marginTop: 6 }}>{errorMessage}</Text>}
+      </View>
 
-        {/* Input container */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>🎲 Game Code</Text>
-          <TextInput
-            placeholder='Enter Game ID...'
-            placeholderTextColor='#6b7280'
-            value={gameId}
-            onChangeText={setGameId}
-            style={[styles.input, { marginBottom: 20 }]}
-            autoCapitalize='characters'
-          />
-          
-          <Text style={styles.label}>🎭 Your Name</Text>
-          <TextInput
-            placeholder='Enter your name...'
-            placeholderTextColor='#6b7280'
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-            maxLength={20}
-          />
-          {name.length > 0 && (
-            <Text style={styles.charCount}>{name.length}/20</Text>
-          )}
-        </View>
-
-        {/* Join button */}
-        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-          <Pressable 
-            onPress={handleJoin} 
-            style={({ pressed }) => [
-              styles.button,
-              (!name.trim() || !gameId.trim()) && styles.buttonDisabled,
-              pressed && styles.buttonPressed
-            ]}
-            disabled={!name.trim() || !gameId.trim()}
-          >
-            <Text style={styles.buttonText}>
-              {(name.trim() && gameId.trim()) ? '🚀 JOIN GAME 🚀' : '⚠️ FILL ALL FIELDS'}
-            </Text>
-          </Pressable>
-        </Animated.View>
-
-        {/* Back button */}
-        <Pressable 
-          onPress={() => navigation.goBack()} 
-          style={styles.backButton}
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <Pressable
+          onPress={handleJoin}
+          style={({ pressed }) => [
+            styles.button,
+            (!name.trim() || !gameId.trim() || loading) && styles.buttonDisabled,
+            pressed && styles.buttonPressed
+          ]}
+          disabled={!name.trim() || !gameId.trim() || loading}
         >
-          <Text style={styles.backButtonText}>← Back to Menu</Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={[styles.buttonText, styles.loadingText]}>⏳ JOINING...</Text>
+            </View>
+          ) : (
+            <Text style={styles.buttonText}>
+              {name.trim() && gameId.trim() ? '🚀 JOIN GAME 🚀' : '⚠️ FILL ALL FIELDS'}
+            </Text>
+          )}
         </Pressable>
+      </Animated.View>
 
-        {/* Info text */}
-        <Text style={styles.infoText}>
-          💡 Get the game code from your host to join
-        </Text>
+      <Pressable onPress={() => navigation.goBack()} style={styles.backButton} disabled={loading}>
+        <Text style={[styles.backButtonText, loading && styles.disabledText]}>← Back to Menu</Text>
+      </Pressable>
+
+      <Text style={styles.infoText}>💡 Get the game code from your host to join</Text>
     </View>
   )
 }

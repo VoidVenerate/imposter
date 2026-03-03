@@ -1,86 +1,279 @@
-import { StyleSheet, Text, View, Pressable, Animated } from 'react-native'
-import React, { useState, useEffect } from 'react'
+import { StyleSheet, Text, View, Pressable, Animated, Dimensions } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
+
+const { width, height } = Dimensions.get('window')
 
 const PlayOptionsScreen = ({navigation}) => {
-  const [pulseAnim] = useState(new Animated.Value(1))
+  const [selectedOption, setSelectedOption] = useState(null)
+  const [scanOffset, setScanOffset] = useState(0)
+  
+  // Animation refs
+  const pulseAnim = useRef(new Animated.Value(1)).current
+  const scanAnim = useRef(new Animated.Value(0)).current
+  const hostScale = useRef(new Animated.Value(1)).current
+  const joinScale = useRef(new Animated.Value(1)).current
+  const opacityAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
+    // Entry animation
+    Animated.timing(opacityAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true
+    }).start()
+
+    // Ambient pulse for urgency
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 1200,
+          toValue: 1.03,
+          duration: 2000,
           useNativeDriver: true
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1200,
+          duration: 2000,
           useNativeDriver: true
         })
       ])
     ).start()
+
+    // Scanner line animation
+    Animated.loop(
+      Animated.timing(scanAnim, {
+        toValue: height * 0.6,
+        duration: 3000,
+        useNativeDriver: true
+      })
+    ).start()
   }, [])
+
+  const handleHostPress = () => {
+    setSelectedOption('host')
+    Animated.sequence([
+      Animated.timing(hostScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true
+      }),
+      Animated.timing(hostScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true
+      })
+    ]).start(() => navigation.navigate('CreateGame'))
+  }
+
+  const handleJoinPress = () => {
+    setSelectedOption('join')
+    Animated.sequence([
+      Animated.timing(joinScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true
+      }),
+      Animated.timing(joinScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true
+      })
+    ]).start(() => navigation.navigate('JoinGame'))
+  }
 
   return (
     <View style={styles.container}>
-      {/* Background glow effect */}
-      <View style={styles.backgroundGlow} />
+      {/* CRT Scanline Overlay */}
+      <Animated.View 
+        style={[
+          styles.scanline,
+          { transform: [{ translateY: scanAnim }] }
+        ]} 
+      />
+      
+      {/* Vignette */}
+      <View style={styles.vignette} />
+      
+      {/* Tactical Grid */}
+      <View style={styles.grid} />
 
-      {/* Header with emojis */}
-      <View style={styles.header}>
-        <Text style={styles.emoji}>🎮</Text>
-        <Text style={styles.title}>CHOOSE MODE</Text>
-        <Text style={styles.emoji}>🎮</Text>
-      </View>
+      {/* Header Section */}
+      <Animated.View style={[styles.headerContainer, { opacity: opacityAnim }]}>
+        <View style={styles.classifiedBadge}>
+          <Text style={styles.classifiedText}>SECURE CONNECTION</Text>
+          <View style={styles.statusDot} />
+        </View>
 
-      <Text style={styles.subtitle}>How do you want to play?</Text>
+        <View style={styles.titleWrapper}>
+          <Text style={styles.titleIcon}>⚠️</Text>
+          <Text style={styles.title}>SELECT PROTOCOL</Text>
+          <Text style={styles.titleIcon}>⚠️</Text>
+        </View>
 
-      {/* Decorative divider */}
-      <View style={styles.divider} />
+        <Text style={styles.subtitle}>
+          <Text style={styles.redacted}>████</Text> CHOOSE YOUR ROLE{' '}
+          <Text style={styles.redacted}>████</Text>
+        </Text>
 
-      {/* Buttons container */}
-      <View style={styles.buttonContainer}>
-        {/* Host Game Button */}
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        {/* Security Level Indicator */}
+        <View style={styles.securityBar}>
+          <Text style={styles.securityLabel}>SECURITY LEVEL: MAXIMUM</Text>
+          <View style={styles.securityTrack}>
+            <Animated.View 
+              style={[
+                styles.securityFill,
+                {
+                  width: pulseAnim.interpolate({
+                    inputRange: [1, 1.03],
+                    outputRange: ['85%', '100%']
+                  })
+                }
+              ]} 
+            />
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Main Options */}
+      <View style={styles.optionsContainer}>
+        {/* Host Game Option */}
+        <Animated.View 
+          style={[
+            styles.optionCard,
+            { 
+              transform: [
+                { scale: hostScale },
+                { scale: selectedOption === 'host' ? pulseAnim : 1 }
+              ],
+              opacity: opacityAnim
+            }
+          ]}
+        >
           <Pressable 
             style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed
-            ]} 
-            onPress={() => {navigation.navigate('CreateGame')}}
+              styles.cardInner,
+              styles.hostCard,
+              pressed && styles.cardPressed
+            ]}
+            onPress={handleHostPress}
           >
-            <Text style={styles.buttonIcon}>👑</Text>
-            <Text style={styles.buttonText}>HOST GAME</Text>
-            <Text style={styles.buttonHint}>Create a new lobby</Text>
+            <View style={styles.cardGlow} />
+            
+            <View style={styles.cardHeader}>
+              <View style={styles.iconContainer}>
+                <Text style={styles.cardIcon}>👑</Text>
+                <View style={styles.pingIndicator} />
+              </View>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>COMMAND</Text>
+              </View>
+            </View>
+
+            <Text style={styles.cardTitle}>INITIATE MISSION</Text>
+            <Text style={styles.cardSubtitle}>Create secure lobby</Text>
+
+            <View style={styles.cardDetails}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>CONTROL:</Text>
+                <Text style={styles.detailValue}>FULL</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>ACCESS:</Text>
+                <Text style={styles.detailValue}>ADMIN</Text>
+              </View>
+            </View>
+
+            <View style={styles.selectBar}>
+              <Text style={styles.selectText}>► SELECT</Text>
+            </View>
           </Pressable>
         </Animated.View>
 
-        {/* Join Game Button */}
-        <Pressable 
-          style={({ pressed }) => [
-            styles.buttonSecondary,
-            pressed && styles.buttonSecondaryPressed
+        {/* Divider */}
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Join Game Option */}
+        <Animated.View 
+          style={[
+            styles.optionCard,
+            { 
+              transform: [
+                { scale: joinScale },
+                { scale: selectedOption === 'join' ? pulseAnim : 1 }
+              ],
+              opacity: opacityAnim,
+              animationDelay: '200ms'
+            }
           ]}
-          onPress={() => {navigation.navigate('JoinGame')}}
         >
-          <Text style={styles.buttonIconSecondary}>🔑</Text>
-          <Text style={styles.buttonTextSecondary}>JOIN GAME</Text>
-          <Text style={styles.buttonHintSecondary}>Enter a game code</Text>
-        </Pressable>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.cardInner,
+              styles.joinCard,
+              pressed && styles.cardPressed
+            ]}
+            onPress={handleJoinPress}
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.iconContainer}>
+                <Text style={styles.cardIcon}>🔑</Text>
+                <View style={[styles.pingIndicator, styles.pingSlow]} />
+              </View>
+              <View style={[styles.roleBadge, styles.roleBadgeSecondary]}>
+                <Text style={[styles.roleText, styles.roleTextSecondary]}>INFILTRATE</Text>
+              </View>
+            </View>
+
+            <Text style={[styles.cardTitle, styles.cardTitleSecondary]}>JOIN OPERATION</Text>
+            <Text style={[styles.cardSubtitle, styles.cardSubtitleSecondary]}>Enter access code</Text>
+
+            <View style={styles.cardDetails}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>CONTROL:</Text>
+                <Text style={[styles.detailValue, styles.detailValueSecondary]}>LIMITED</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>ACCESS:</Text>
+                <Text style={[styles.detailValue, styles.detailValueSecondary]}>GUEST</Text>
+              </View>
+            </View>
+
+            <View style={[styles.selectBar, styles.selectBarSecondary]}>
+              <Text style={[styles.selectText, styles.selectTextSecondary]}>► SELECT</Text>
+            </View>
+          </Pressable>
+        </Animated.View>
       </View>
 
-      {/* Back button */}
-      <Pressable 
-        onPress={() => navigation.goBack()} 
-        style={styles.backButton}
-      >
-        <Text style={styles.backButtonText}>← Back to Menu</Text>
-      </Pressable>
+      {/* Footer Controls */}
+      <Animated.View style={[styles.footer, { opacity: opacityAnim }]}>
+        <Pressable 
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.backButtonPressed
+          ]}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backIcon}>←</Text>
+          <Text style={styles.backText}>ABORT / RETURN</Text>
+        </Pressable>
 
-      {/* Info text */}
-      <Text style={styles.infoText}>
-        ⚡ Quick tip: Hosting lets you control the game settings
-      </Text>
+        <View style={styles.tipContainer}>
+          <Text style={styles.tipIcon}>ℹ️</Text>
+          <Text style={styles.tipText}>
+            Hosts maintain tactical advantage and settings control
+          </Text>
+        </View>
+      </Animated.View>
+
+      {/* Corner Decorations */}
+      <View style={[styles.corner, styles.cornerTL]} />
+      <View style={[styles.corner, styles.cornerTR]} />
+      <View style={[styles.corner, styles.cornerBL]} />
+      <View style={[styles.corner, styles.cornerBR]} />
     </View>
   )
 }
@@ -88,167 +281,467 @@ const PlayOptionsScreen = ({navigation}) => {
 export default PlayOptionsScreen
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    padding: 24,
-    backgroundColor: '#0a0e17',
+  container: {
+    flex: 1,
+    backgroundColor: '#050505',
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
   },
 
-  backgroundGlow: {
+  // Effects
+  scanline: {
     position: 'absolute',
-    top: '25%',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(230, 57, 70, 0.12)',
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: 'rgba(255, 68, 68, 0.3)',
+    zIndex: 100,
+    shadowColor: '#ff4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
+    shadowOpacity: 0.8,
   },
 
-  header: {
+  vignette: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'radial-gradient(circle, transparent 30%, #000 100%)',
+    opacity: 0.9,
+    zIndex: 1,
+  },
+
+  grid: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.02,
+    backgroundImage: `
+      linear-gradient(rgba(255, 68, 68, 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 68, 68, 0.5) 1px, transparent 1px)
+    `,
+    backgroundSize: '40px 40px',
+  },
+
+  // Header
+  headerContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 30,
+    zIndex: 10,
+  },
+
+  classifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 255, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 0, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginBottom: 20,
+    gap: 8,
+  },
+
+  classifiedText: {
+    color: '#00ff00',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+    fontFamily: 'monospace',
+  },
+
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#00ff00',
+    shadowColor: '#00ff00',
+    shadowRadius: 4,
+    shadowOpacity: 1,
+  },
+
+  titleWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 12,
   },
 
-  emoji: {
-    fontSize: 32,
-    marginHorizontal: 10,
+  titleIcon: {
+    fontSize: 24,
+    opacity: 0.8,
   },
 
-  title: { 
-    fontSize: 38, 
-    fontWeight: '900', 
-    color: '#E63946',
-    letterSpacing: 3,
-    textShadowColor: '#E63946',
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 4,
+    textShadowColor: '#ff4444',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 15,
+    textShadowRadius: 10,
   },
 
   subtitle: {
-    fontSize: 16,
-    color: '#9AA0A6',
-    textAlign: 'center',
-    marginBottom: 24,
-    fontStyle: 'italic',
+    fontSize: 14,
+    color: '#666',
+    letterSpacing: 2,
+    marginBottom: 20,
+    fontWeight: '700',
   },
 
-  divider: {
-    width: 100,
-    height: 2,
-    backgroundColor: '#E63946',
-    marginBottom: 40,
+  redacted: {
+    backgroundColor: '#333',
+    color: '#333',
     borderRadius: 2,
+    overflow: 'hidden',
   },
 
-  buttonContainer: {
+  securityBar: {
+    width: '80%',
+    maxWidth: 300,
+    alignItems: 'center',
+  },
+
+  securityLabel: {
+    color: '#ff4444',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: 6,
+    fontFamily: 'monospace',
+  },
+
+  securityTrack: {
     width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(255, 68, 68, 0.2)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+
+  securityFill: {
+    height: '100%',
+    backgroundColor: '#ff4444',
+    shadowColor: '#ff0000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 8,
+    shadowOpacity: 0.8,
+  },
+
+  // Options
+  optionsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 20,
+    zIndex: 10,
     maxWidth: 400,
-    marginBottom: 20,
+    width: '100%',
+    alignSelf: 'center',
   },
 
-  button: {
-    backgroundColor: '#E63946',
-    paddingVertical: 20,
-    paddingHorizontal: 40,
+  optionCard: {
+    width: '100%',
+  },
+
+  cardInner: {
+    backgroundColor: 'rgba(10, 10, 10, 0.9)',
     borderRadius: 16,
-    marginBottom: 20,
-    alignItems: 'center',
-    shadowColor: '#E63946',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 8,
+    padding: 24,
+    borderWidth: 1,
+    position: 'relative',
+    overflow: 'hidden',
   },
 
-  buttonPressed: {
-    backgroundColor: '#d32f3c',
+  hostCard: {
+    borderColor: '#ff4444',
+    shadowColor: '#ff0000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 20,
+    shadowOpacity: 0.3,
+  },
+
+  joinCard: {
+    borderColor: '#444',
+    backgroundColor: 'rgba(20, 20, 20, 0.9)',
+  },
+
+  cardPressed: {
     transform: [{ scale: 0.98 }],
+    borderColor: '#ff6666',
   },
 
-  buttonIcon: {
-    fontSize: 36,
-    marginBottom: 8,
+  cardGlow: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 100,
+    height: 100,
+    backgroundColor: 'rgba(255, 68, 68, 0.2)',
+    borderRadius: 50,
+    blur: 40,
   },
 
-  buttonText: { 
-    color: '#fff', 
-    fontSize: 20, 
-    fontWeight: '800', 
-    textAlign: 'center',
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  iconContainer: {
+    position: 'relative',
+  },
+
+  cardIcon: {
+    fontSize: 32,
+  },
+
+  pingIndicator: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#00ff00',
+    shadowColor: '#00ff00',
+    shadowRadius: 6,
+    shadowOpacity: 1,
+  },
+
+  pingSlow: {
+    backgroundColor: '#ffaa00',
+    shadowColor: '#ffaa00',
+    opacity: 0.7,
+  },
+
+  roleBadge: {
+    backgroundColor: 'rgba(255, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: '#ff4444',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    transform: [{ skewX: '-10deg' }],
+  },
+
+  roleBadgeSecondary: {
+    backgroundColor: 'rgba(100, 100, 100, 0.2)',
+    borderColor: '#666',
+  },
+
+  roleText: {
+    color: '#ff4444',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    transform: [{ skewX: '10deg' }],
+  },
+
+  roleTextSecondary: {
+    color: '#888',
+  },
+
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#fff',
     letterSpacing: 2,
     marginBottom: 4,
   },
 
-  buttonHint: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 13,
-    fontWeight: '500',
-    fontStyle: 'italic',
+  cardTitleSecondary: {
+    color: '#ccc',
   },
 
-  buttonSecondary: {
-    borderWidth: 2,
-    borderColor: '#E63946',
-    backgroundColor: 'rgba(230, 57, 70, 0.1)',
-    paddingVertical: 20,
-    paddingHorizontal: 40,
-    borderRadius: 16,
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#ff4444',
+    opacity: 0.8,
+    marginBottom: 16,
+    letterSpacing: 1,
+  },
+
+  cardSubtitleSecondary: {
+    color: '#666',
+  },
+
+  cardDetails: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    paddingTop: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
+  detailLabel: {
+    color: '#666',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    fontFamily: 'monospace',
+  },
+
+  detailValue: {
+    color: '#ff4444',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    fontFamily: 'monospace',
+  },
+
+  detailValueSecondary: {
+    color: '#888',
+  },
+
+  selectBar: {
+    backgroundColor: 'rgba(255, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 68, 68, 0.5)',
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
   },
 
-  buttonSecondaryPressed: {
-    backgroundColor: 'rgba(230, 57, 70, 0.2)',
-    transform: [{ scale: 0.98 }],
+  selectBarSecondary: {
+    backgroundColor: 'rgba(100, 100, 100, 0.1)',
+    borderColor: 'rgba(100, 100, 100, 0.5)',
   },
 
-  buttonIconSecondary: {
-    fontSize: 36,
-    marginBottom: 8,
+  selectText: {
+    color: '#ff4444',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 3,
   },
 
-  buttonTextSecondary: { 
-    color: '#E63946', 
-    fontSize: 20, 
-    fontWeight: '800', 
-    textAlign: 'center',
+  selectTextSecondary: {
+    color: '#888',
+  },
+
+  // Divider
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    opacity: 0.5,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#333',
+  },
+
+  dividerText: {
+    color: '#444',
+    fontSize: 12,
+    fontWeight: '800',
     letterSpacing: 2,
-    marginBottom: 4,
   },
 
-  buttonHintSecondary: {
-    color: 'rgba(230, 57, 70, 0.7)',
-    fontSize: 13,
-    fontWeight: '500',
-    fontStyle: 'italic',
+  // Footer
+  footer: {
+    marginTop: 20,
+    alignItems: 'center',
+    gap: 16,
+    zIndex: 10,
   },
 
   backButton: {
-    padding: 14,
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    marginTop: 10,
-    minWidth: 200,
   },
 
-  backButtonText: {
-    color: '#9AA0A6',
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: 15,
+  backButtonPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
 
-  infoText: {
-    position: 'absolute',
-    bottom: 30,
-    fontSize: 13,
-    color: '#6b7280',
+  backIcon: {
+    color: '#666',
+    fontSize: 16,
+  },
+
+  backText: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
+
+  tipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    opacity: 0.6,
+  },
+
+  tipIcon: {
+    fontSize: 12,
+  },
+
+  tipText: {
+    color: '#444',
+    fontSize: 11,
     fontStyle: 'italic',
-    textAlign: 'center',
-    paddingHorizontal: 24,
+    letterSpacing: 0.5,
+  },
+
+  // Corner Decorations
+  corner: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderColor: '#ff4444',
+    zIndex: 5,
+    opacity: 0.5,
+  },
+
+  cornerTL: {
+    top: 20,
+    left: 20,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+  },
+
+  cornerTR: {
+    top: 20,
+    right: 20,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+  },
+
+  cornerBL: {
+    bottom: 20,
+    left: 20,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+  },
+
+  cornerBR: {
+    bottom: 20,
+    right: 20,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
   },
 })
