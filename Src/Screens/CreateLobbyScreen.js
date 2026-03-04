@@ -1,52 +1,54 @@
 import { StyleSheet, Text, View, TextInput, Pressable, Animated, ActivityIndicator } from 'react-native'
-import React, {useState, useEffect} from 'react'
+import React, { useState, useEffect } from 'react'
 import { createGame } from '../api'
 
-const CreateLobbyScreen = ({navigation}) => {
-    const [name, setName] = useState("")
-    const [loading, setLoading] = useState(false)
-    const [scaleAnim] = useState(new Animated.Value(1))
+const CreateLobbyScreen = ({ navigation }) => {
+  const [name, setName] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [scaleAnim] = useState(new Animated.Value(1))
 
-    useEffect(() => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(scaleAnim, {
-                    toValue: 1.02,
-                    duration: 1500,
-                    useNativeDriver: true
-                }),
-                Animated.timing(scaleAnim, {
-                    toValue: 1,
-                    duration: 1500,
-                    useNativeDriver: true
-                })
-            ])
-        ).start()
-    }, [])
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.02,
+          duration: 1500,
+          useNativeDriver: true
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true
+        })
+      ])
+    ).start()
+  }, [])
 
-    const handleCreate = async () => {
-        if (!name.trim()) return
-        setLoading(true)
-        try {
-            const data = await createGame(name)
+  const handleCreate = async () => {
+    if (!name.trim()) return
+    setLoading(true)
+    try {
+      const data = await createGame(name)
+      
+      // Get the host player (usually the first in the array)
+      const player = data.players.find(p => p.name === name) || data.players[0]
 
-            navigation.navigate(`LobbyScreen`, {
-                gameId: data.game_id,
-                isHost: true,
-                playerName: name,
-            })
-        } catch (error) {
-            console.error("Error creating game:", error)
-            setLoading(false)
-        }
-    } 
+      navigation.navigate("LobbyScreen", {
+        gameId: data.game_id,
+        isHost: true,
+        playerName: name,
+        playerId: player.id, // <-- Pass the playerId
+      })
+    } catch (error) {
+      console.error("Error creating game:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <View style={styles.container}>
-      {/* Background glow effect */}
       <View style={styles.backgroundGlow} />
-
-      {/* Header with emoji */}
       <View style={styles.header}>
         <Text style={styles.emoji}>👑</Text>
         <Text style={styles.title}>Create Lobby</Text>
@@ -54,11 +56,8 @@ const CreateLobbyScreen = ({navigation}) => {
       </View>
 
       <Text style={styles.subtitle}>Start a new game and invite your friends</Text>
-
-      {/* Decorative divider */}
       <View style={styles.divider} />
 
-      {/* Input container */}
       <View style={styles.inputContainer}>
         <Text style={styles.label}>🎭 Your Name</Text>
         <TextInput
@@ -70,15 +69,12 @@ const CreateLobbyScreen = ({navigation}) => {
           maxLength={20}
           editable={!loading}
         />
-        {name.length > 0 && (
-          <Text style={styles.charCount}>{name.length}/20</Text>
-        )}
+        {name.length > 0 && <Text style={styles.charCount}>{name.length}/20</Text>}
       </View>
 
-      {/* Create button */}
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <Pressable 
-          onPress={handleCreate} 
+        <Pressable
+          onPress={handleCreate}
           style={({ pressed }) => [
             styles.button,
             (!name.trim() || loading) && styles.buttonDisabled,
@@ -89,9 +85,7 @@ const CreateLobbyScreen = ({navigation}) => {
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#fff" />
-              <Text style={[styles.buttonText, styles.loadingText]}>
-                ⏳ CREATING...
-              </Text>
+              <Text style={[styles.buttonText, styles.loadingText]}>⏳ CREATING...</Text>
             </View>
           ) : (
             <Text style={styles.buttonText}>
@@ -101,21 +95,11 @@ const CreateLobbyScreen = ({navigation}) => {
         </Pressable>
       </Animated.View>
 
-      {/* Back button */}
-      <Pressable 
-        onPress={() => navigation.goBack()} 
-        style={styles.backButton}
-        disabled={loading}
-      >
-        <Text style={[styles.backButtonText, loading && styles.disabledText]}>
-          ← Back to Menu
-        </Text>
+      <Pressable onPress={() => navigation.goBack()} style={styles.backButton} disabled={loading}>
+        <Text style={[styles.backButtonText, loading && styles.disabledText]}>← Back to Menu</Text>
       </Pressable>
 
-      {/* Info text */}
-      <Text style={styles.infoText}>
-        💡 You'll be the host and can start the game when ready
-      </Text>
+      <Text style={styles.infoText}>💡 You'll be the host and can start the game when ready</Text>
     </View>
   )
 }

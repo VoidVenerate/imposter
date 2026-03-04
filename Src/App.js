@@ -8,6 +8,8 @@ import PlayOptionsScreen from './Screens/PlayOptionsScreen';
 import JoinLobbyScreen from './Screens/JoinLobbyScreen';
 import LobbyScreen from './Screens/LobbyScreen';
 import QuestionScreen from './Screens/QuestionScreen';
+import RevealAnswersScreen from './Screens/RevealAnswersScreen';
+import GameEndScreen from './Screens/GameEndScreen';
 
   const Stack = createNativeStackNavigator()
 export default function App() {
@@ -21,6 +23,8 @@ export default function App() {
         <Stack.Screen name = 'JoinGame' component={JoinLobbyScreen} />
         <Stack.Screen name = 'LobbyScreen' component={LobbyScreen} />
         <Stack.Screen name = 'QuestionScreen' component={QuestionScreen} />
+        <Stack.Screen name = 'RevealAnswersScreen' component={RevealAnswersScreen} />
+        <Stack.Screen name = 'GameEndScreen' component={GameEndScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>

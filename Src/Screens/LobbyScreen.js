@@ -4,33 +4,51 @@ import { useWebsocket } from '../websocket'
 import { startGame } from '../api'
 
 const LobbyScreen = ({ route, navigation }) => {
-  const { gameId, playerName, isHost } = route.params
+  const { gameId, playerName, isHost, playerId } = route.params
   const [pulseAnim] = useState(new Animated.Value(1))
   
   // UI state
   const [players, setPlayers] = useState([])
   
-  // Socket hook
+  // Socket hook - use playerName for WebSocket URL
   const { send, status } = useWebsocket(gameId, playerName, (msg) => {
-    const currentPlayer = players.find(p => p === playerName)
-    console.log('SERVER MESSAGE', msg);
-    onsole.log('player id', currentPlayer?.id)
+    console.log('RAW SERVER MESSAGE:', JSON.stringify(msg, null, 2));
+    
     if (msg.event === 'player_joined' || msg.event === 'current_state') {
-      setPlayers(msg.players)
+      setPlayers(msg.players || [])
     }
-      // Navigate to question screen
-    if (
-      msg.event === 'your_question'
-    ) {
-      navigation.replace('QuestionScreen', { gameId, playerName, question: msg.question, isImposter: msg.is_imposter, playerId: currentPlayer?.id, send })
-      console.log('player id', currentPlayer?.id)
+    
+    if (msg.stage === 'question_answering') {
+      console.log("QUESTION MESSAGE:", msg);
+
+      if (!msg.question && !msg.data?.question) {
+        console.log("Question missing in payload!");
+        return;
+      }
+
+      const question = msg.data?.question ?? msg.question;
+      const isImposter = msg.data?.is_imposter ?? msg.is_imposter ?? false;
+
+      // Pass BOTH playerName (for WS) and playerId (for API)
+      navigation.replace('QuestionScreen', {
+        gameId,
+        playerName,
+        playerId,  // <-- Keep this for API calls!
+        question,
+        isImposter,
+      });
     }
+    
     if (msg.event === 'reveal_answers') {
-      navigation.replace('RevealScreen')
+      navigation.replace('RevealAnswersScreen')
     }
 
     if (msg.event === 'reveal_imposter') {
-      navigation.replace('GameEndScreen')
+      navigation.replace('GameEndScreen', {
+        gameId,
+        playerName,
+        isHost,
+      })
     }
   })
 
@@ -50,16 +68,19 @@ const LobbyScreen = ({ route, navigation }) => {
       ])
     ).start()
   }, [])
-  const handleStartGame = async () => {
-        try {
-            if (players.length < 3) return
-            const data = await startGame(gameId)
-            console.log("START GAME RESPONSE:", data)
-        } catch (error) {
-            console.log("START GAME ERROR:", error.response?.data || error.message)
-        }
-    }
 
+  const handleStartGame = async () => {
+    try {
+      if (players.length < 3) {
+        alert("Need at least 3 players to start!")
+        return
+      }
+      const data = await startGame(gameId)
+      console.log("START GAME RESPONSE:", data)
+    } catch (error) {
+      console.log("START GAME ERROR:", error.response?.data || error.message)
+    }
+  }
 
   const getStatusColor = () => {
     switch(status) {
@@ -72,7 +93,6 @@ const LobbyScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Background glow effect */}
       <View style={styles.backgroundGlow} />
 
       {/* Header */}
@@ -82,7 +102,7 @@ const LobbyScreen = ({ route, navigation }) => {
         <Text style={styles.emoji}>🎮</Text>
       </View>
 
-      {/* Game ID Display */}
+      {/* Game ID */}
       <View style={styles.gameCodeContainer}>
         <Text style={styles.gameCodeLabel}>Game Code</Text>
         <Text style={styles.gameCode}>{gameId}</Text>
@@ -94,51 +114,43 @@ const LobbyScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* Decorative divider */}
       <View style={styles.divider} />
 
-      {/* Players Section */}
+      {/* Players */}
       <View style={styles.playersSection}>
-        <View style={styles.playerHeader}>
-          <Text style={styles.playersTitle}>👥 Players ({players.length})</Text>
-        </View>
-
+        <Text style={styles.playersTitle}>👥 Players ({players.length})</Text>
         <FlatList
           data={players}
-          keyExtractor={(item) => item}
-          renderItem={({item}) => (
+          keyExtractor={(item) => item.id || item.player_id}
+          renderItem={({ item }) => (
             <View style={styles.playerItem}>
-              <View style={styles.playerInfo}>
-                <Text style={styles.playerEmoji}>
-                  {item === playerName ? '👑' : '🎭'}
-                </Text>
-                <Text style={styles.playerName}>
-                  {item} {item === playerName && '(You)'}
-                </Text>
-              </View>
+              <Text style={styles.playerEmoji}>
+                {(item.id === playerId || item.player_id === playerId) ? '👑' : '🎭'}
+              </Text>
+              <Text style={styles.playerName}>
+                {item.name} {(item.id === playerId || item.player_id === playerId) ? "(You)" : ""}
+              </Text>
             </View>
           )}
-          style={styles.playersList}
           contentContainerStyle={styles.playersListContent}
         />
       </View>
 
-      {/* Action Buttons */}
+      {/* Buttons */}
       <View style={styles.buttonContainer}>
-        {/* START GAME (host only) */}
         {isHost && (
-          <Animated.View style={{ transform: [{ scale: players.length >= 2 ? pulseAnim : 1 }] }}>
+          <Animated.View style={{ transform: [{ scale: players.length >= 3 ? pulseAnim : 1 }] }}>
             <Pressable 
               onPress={handleStartGame}
-              disabled={players.length < 2 || status !== 'open'}
+              disabled={players.length < 3 || status !== 'open'}
               style={({ pressed }) => [
                 styles.startButton,
-                (players.length < 2 || status !== 'open') && styles.buttonDisabled,
+                (players.length < 3 || status !== 'open') && styles.buttonDisabled,
                 pressed && styles.startButtonPressed
               ]}
             >
               <Text style={styles.startButtonText}>
-                {players.length > 2 && status === 'open' 
+                {players.length >= 3 && status === 'open' 
                   ? '🚀 START GAME 🚀' 
                   : '⏳ WAITING FOR PLAYERS'
                 }
@@ -155,10 +167,7 @@ const LobbyScreen = ({ route, navigation }) => {
         </Pressable>
       </View>
 
-      {/* Host indicator */}
-      {isHost && (
-        <Text style={styles.hostIndicator}>👑 You are the host</Text>
-      )}
+      {isHost && <Text style={styles.hostIndicator}>👑 You are the host</Text>}
     </View>
   )
 }
@@ -262,22 +271,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  playerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-
   playersTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: '#b8bdc4',
     letterSpacing: 1,
-  },
-
-  playersList: {
-    flex: 1,
   },
 
   playersListContent: {
@@ -286,7 +284,6 @@ const styles = StyleSheet.create({
 
   playerItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
@@ -294,12 +291,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-  },
-
-  playerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
   },
 
   playerEmoji: {
@@ -312,6 +303,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.5,
+  },
+
+  buttonContainer: {
+    marginTop: 'auto',
   },
 
   startButton: {
