@@ -116,7 +116,17 @@ const RevealAnswersScreen = ({ route, navigation }) => {
       ) : (
         <View style={styles.votedContainer}>
           <Text style={styles.votedEmoji}>✅</Text>
-          <Text style={styles.votedText}>Vote submitted — waiting for others...</Text>
+          <Text style={styles.votedText}>
+            Vote submitted — waiting for others...
+          </Text>
+
+          {/* NEW BUTTON */}
+          <Pressable
+            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+            onPress={() => setDrawerOpen(true)}
+          >
+            <Text style={styles.buttonText}>🔁 Change Vote</Text>
+          </Pressable>
         </View>
       )}
 
@@ -145,7 +155,7 @@ const RevealAnswersScreen = ({ route, navigation }) => {
                     isSelected && styles.voteOptionSelected,
                     pressed && styles.voteOptionPressed,
                   ]}
-                  onPress={() => setSelectedVote(player)}
+                  onPress={() => {setSelectedVote(player); console.log('Selected vote:', player)}}
                 >
                   <Text style={styles.voteOptionEmoji}>
                     {isSelected ? '🔴' : '⚪'}
